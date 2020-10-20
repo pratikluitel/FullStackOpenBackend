@@ -1,6 +1,6 @@
-express = require("express");
+const express = require("express");
 
-const persons = [
+let persons = [
   { id: 1, name: "Arto Hellas", number: "040-123456" },
   { id: 2, name: "Ada Lovelace", number: "39-44-5323523" },
   { id: 3, name: "Dan Abramov", number: "12-43-234345" },
@@ -10,16 +10,32 @@ const persons = [
 const app = express();
 const number = persons.length;
 
-app.get("/info", (req, resp) => {
-  resp.status(200);
-  resp.send(
-    `<p>Phonebook has info for ${number} people</p><p>${new Date()}</p>`
-  );
-});
+app.use(express.json());
 
 app.get("/api/persons", (req, resp) => {
-  resp.status(200);
   resp.json(persons);
+});
+
+app.post("/api/persons", (req, resp) => {
+  const exists = persons.find((person) => person.number === req.body.number);
+  if (!req.body.name || !req.body.number) {
+    return resp.status(400).json({
+      error: "missing required parameters",
+    });
+  }
+  if (exists) {
+    return resp.status(400).json({
+      error: "number already exists",
+    });
+  }
+  const newPerson = {
+    id: Math.floor(Math.random() * 1000),
+    name: req.body.name,
+    number: req.body.number,
+  };
+  resp.json(newPerson);
+  persons = persons.concat(newPerson);
+  console.log(persons);
 });
 
 app.get("/api/persons/:id", (req, resp) => {
@@ -27,7 +43,6 @@ app.get("/api/persons/:id", (req, resp) => {
     (person) => person.id === Number(req.params.id)
   );
   if (selected) {
-    resp.status(200);
     resp.json(selected);
   } else {
     resp.status(404).end();
@@ -37,6 +52,12 @@ app.get("/api/persons/:id", (req, resp) => {
 app.delete("/api/persons/:id", (req, resp) => {
   persons = persons.filter((person) => person.id !== Number(req.params.id));
   resp.status(204).end();
+});
+
+app.get("/info", (req, resp) => {
+  resp.send(
+    `<p>Phonebook has info for ${number} people</p><p>${new Date()}</p>`
+  );
 });
 
 const PORT = 3001;
