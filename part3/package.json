@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "build:ui": "rm -rf build && cd ../../part2/phonebook && yarn build && cp -r build ../../part3onwards/part3/",
+    "deploy": "git push heroku master",
+    "deploy:full": "npm run build:ui && git add . && git commit -m ui:build && npm run deploy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
