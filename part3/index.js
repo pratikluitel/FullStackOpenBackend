@@ -1,16 +1,17 @@
+require("dotenv").config();
 const express = require("express");
 const morgan = require("morgan");
+const Person = require("./models/person");
 const cors = require("cors");
 
-let persons = [
-  { id: 1, name: "Arto Hellas", number: "040-123456" },
-  { id: 2, name: "Ada Lovelace", number: "39-44-5323523" },
-  { id: 3, name: "Dan Abramov", number: "12-43-234345" },
-  { id: 4, name: "Mary Poppendik", number: "39-23-6423122" },
-];
+// let persons = [
+//   { id: 1, name: "Arto Hellas", number: "040-123456" },
+//   { id: 2, name: "Ada Lovelace", number: "39-44-5323523" },
+//   { id: 3, name: "Dan Abramov", number: "12-43-234345" },
+//   { id: 4, name: "Mary Poppendik", number: "39-23-6423122" },
+// ];
 
 const app = express();
-const number = persons.length;
 
 morgan.token("body", function (req, res) {
   if (req.method === "POST" && res.statusCode === 200)
@@ -26,39 +27,39 @@ app.use(cors());
 app.use(express.static("build"));
 
 app.get("/api/persons", (req, resp) => {
-  resp.json(persons);
+  Person.find({}).then((persons) => resp.json(persons));
 });
 
 app.post("/api/persons", (req, resp) => {
-  const exists = persons.find((person) => person.number === req.body.number);
-  if (!req.body.name || !req.body.number) {
-    return resp.status(400).json({
-      error: "missing required parameters",
-    });
+  const body = req.body;
+  if (!body.name || !body.number) {
+    return response.status(400).json({ error: "missing required parameters" });
   }
-  if (exists) {
-    return resp.status(400).json({
-      error: "number already exists",
-    });
-  }
-  const newPerson = {
-    id: Math.floor(Math.random() * 1000),
-    name: req.body.name,
-    number: req.body.number,
-  };
-  resp.json(newPerson);
-  persons = persons.concat(newPerson);
+
+  const person = new Person({
+    name: body.name,
+    number: body.number,
+  });
+  person.save().then((savedPerson) => {
+    resp.json(savedPerson);
+  });
+  // const exists = persons.find((person) => person.number === req.body.number);
+  // if (!req.body.name || !req.body.number) {
+  //   return resp.status(400).json({
+  //     error: "missing required parameters",
+  //   });
+  // }
+  // if (exists) {
+  //   return resp.status(400).json({
+  //     error: "number already exists",
+  //   });
+  // }
 });
 
 app.get("/api/persons/:id", (req, resp) => {
-  const selected = persons.find(
-    (person) => person.id === Number(req.params.id)
-  );
-  if (selected) {
-    resp.json(selected);
-  } else {
-    resp.status(404).end();
-  }
+  Person.findById(req.params.id).then((person) => {
+    resp.json(person);
+  });
 });
 
 app.delete("/api/persons/:id", (req, resp) => {
