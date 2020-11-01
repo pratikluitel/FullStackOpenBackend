@@ -96,12 +96,14 @@ const unknownEndpoint = (req, resp) => {
 app.use(unknownEndpoint);
 
 const errorHandler = (err, req, resp, next) => {
-  console.log(err.message);
   if (err.name === "CastError") {
-    return resp.status(400).send({ error: "Malformatted id" });
+    return resp.status(400).send({ data: "Malformatted id" });
   }
   if (err.name === "ParamMissing") {
-    return resp.status(400).json({ error: "missing required parameters" });
+    return resp.status(400).json({ data: "missing required parameters" });
+  }
+  if (err.name === "ValidationError") {
+    return resp.status(400).json({ data: `${err.message}` });
   }
   next(err);
 };
