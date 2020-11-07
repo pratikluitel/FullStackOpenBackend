@@ -6,14 +6,9 @@ const Blog = require("../models/blog");
 
 beforeEach(async () => {
   await Blog.deleteMany({});
-  let noteObject = new Blog(helper.initialBlogs[0]);
-  await noteObject.save();
-  noteObject = new Blog(helper.initialBlogs[1]);
-  await noteObject.save();
-  noteObject = new Blog(helper.initialBlogs[2]);
-  await noteObject.save();
-  noteObject = new Blog(helper.initialBlogs[3]);
-  await noteObject.save();
+  const blogObjects = helper.initialBlogs.map((blog) => new Blog(blog));
+  const promiseArray = blogObjects.map((blog) => blog.save());
+  await Promise.all(promiseArray);
 });
 
 const api = supertest(app);
@@ -29,6 +24,11 @@ test("there are right number of blogs", async () => {
   const blogs = await helper.blogsinDb();
 
   expect(blogs).toHaveLength(helper.initialBlogs.length);
+});
+
+test("unique identifier is named id", async () => {
+  const blogs = await helper.blogsinDb();
+  expect(blogs[0].id).toBeDefined();
 });
 
 afterAll(() => {
