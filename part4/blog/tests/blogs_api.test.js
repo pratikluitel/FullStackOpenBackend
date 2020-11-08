@@ -12,72 +12,89 @@ beforeEach(async () => {
 });
 
 const api = supertest(app);
+describe("returning blogs", () => {
+  test("blogs are returned as json", async () => {
+    await api
+      .get("/api/blogs")
+      .expect(200)
+      .expect("Content-Type", /application\/json/);
+  }, 30000);
 
-test("blogs are returned as json", async () => {
-  await api
-    .get("/api/blogs")
-    .expect(200)
-    .expect("Content-Type", /application\/json/);
-}, 30000);
+  test("there are right number of blogs", async () => {
+    const blogs = await helper.blogsinDb();
 
-test("there are right number of blogs", async () => {
-  const blogs = await helper.blogsinDb();
+    expect(blogs).toHaveLength(helper.initialBlogs.length);
+  });
 
-  expect(blogs).toHaveLength(helper.initialBlogs.length);
+  test("unique identifier is named id", async () => {
+    const blogs = await helper.blogsinDb();
+    expect(blogs[0].id).toBeDefined();
+  });
 });
 
-test("unique identifier is named id", async () => {
-  const blogs = await helper.blogsinDb();
-  expect(blogs[0].id).toBeDefined();
+describe("posting blog", () => {
+  test("post request creates a new blog", async () => {
+    const newBlog = {
+      title: "Fantano",
+      author: "Really",
+      url:
+        "http://blog.cleancoder.com/uncle-bob/2017/05/05/TestDefinitions.htmll",
+      likes: 10,
+    };
+
+    await api
+      .post("/api/blogs")
+      .send(newBlog)
+      .expect(201)
+      .expect("Content-Type", /application\/json/);
+
+    const blogs = await helper.blogsinDb();
+    const urls = blogs.map((r) => r.url);
+
+    expect(blogs).toHaveLength(helper.initialBlogs.length + 1);
+    expect(urls).toContain(
+      "http://blog.cleancoder.com/uncle-bob/2017/05/05/TestDefinitions.htmll"
+    );
+  });
+
+  test("if likes property does not exist, default value to 0", async () => {
+    const newBlog = {
+      title: "Arthur",
+      author: "Beowulf",
+      url: "https://dummyurl.co.uk",
+    };
+
+    const response = await api
+      .post("/api/blogs")
+      .send(newBlog)
+      .expect(201)
+      .expect("Content-Type", /application\/json/);
+
+    expect(response.body.likes).toBe(0);
+  });
+
+  test("if properties are missing from post request, bad request", async () => {
+    const newBlog = {
+      author: "Garry",
+      likes: 5,
+    };
+
+    await api.post("/api/blogs").send(newBlog).expect(400);
+  });
 });
 
-test("post request creates a new blog", async () => {
-  const newBlog = {
-    title: "Fantano",
-    author: "Really",
-    url:
-      "http://blog.cleancoder.com/uncle-bob/2017/05/05/TestDefinitions.htmll",
-    likes: 10,
-  };
+describe("deletion works", () => {
+  test("deletion works on an existing note id with status 204", async () => {
+    const blogs = await helper.blogsinDb();
 
-  await api
-    .post("/api/blogs")
-    .send(newBlog)
-    .expect(201)
-    .expect("Content-Type", /application\/json/);
+    await api.delete(`/api/blogs/${blogs[0].id}`).expect(204);
 
-  const blogs = await helper.blogsinDb();
-  const urls = blogs.map((r) => r.url);
+    const afterDel = await helper.blogsinDb();
+    expect(afterDel).toHaveLength(blogs.length - 1);
 
-  expect(blogs).toHaveLength(helper.initialBlogs.length + 1);
-  expect(urls).toContain(
-    "http://blog.cleancoder.com/uncle-bob/2017/05/05/TestDefinitions.htmll"
-  );
-});
-
-test("if likes property does not exist, default value to 0", async () => {
-  const newBlog = {
-    title: "Arthur",
-    author: "Beowulf",
-    url: "https://dummyurl.co.uk",
-  };
-
-  const response = await api
-    .post("/api/blogs")
-    .send(newBlog)
-    .expect(201)
-    .expect("Content-Type", /application\/json/);
-
-  expect(response.body.likes).toBe(0);
-});
-
-test("if properties are missing from post request, bad request", async () => {
-  const newBlog = {
-    author: "Garry",
-    likes: 5,
-  };
-
-  await api.post("/api/blogs").send(newBlog).expect(400);
+    const ids = afterDel.map((blog) => blog.id);
+    expect(ids).not.toContain(blogs[0].id);
+  });
 });
 
 afterAll(() => {
