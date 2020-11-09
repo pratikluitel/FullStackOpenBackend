@@ -3,12 +3,21 @@ const supertest = require("supertest");
 const app = require("../app");
 const helper = require("./tests_helper");
 const Blog = require("../models/blog");
+const User = require("../models/user");
 
 beforeEach(async () => {
   await Blog.deleteMany({});
   const blogObjects = helper.initialBlogs.map((blog) => new Blog(blog));
   const promiseArray = blogObjects.map((blog) => blog.save());
   await Promise.all(promiseArray);
+
+  await User.deleteMany({});
+  const user = new User({
+    name: "admin",
+    username: "admin",
+    password: "password",
+  });
+  await user.save();
 });
 
 const api = supertest(app);
@@ -94,6 +103,51 @@ describe("deletion works", () => {
 
     const ids = afterDel.map((blog) => blog.id);
     expect(ids).not.toContain(blogs[0].id);
+  });
+});
+
+describe("adding user works", () => {
+  test("invalid users are not created", async () => {
+    const newUsers = [
+      {
+        //short username
+        username: "ad",
+        name: "admin",
+        password: "dadklfj",
+      },
+      {
+        //short password
+        username: "admeen",
+        name: "admin",
+        password: "da",
+      },
+      {
+        //short username and password
+        username: "ad",
+        name: "admin",
+        password: "da",
+      },
+      {
+        //duplicate username
+        username: "admin",
+        name: "admin",
+        password: "dawood",
+      },
+      {
+        //missing username
+        name: "admin",
+        password: "dawood",
+      },
+      {
+        //missing password
+        username: "admeen",
+        name: "admin",
+      },
+    ];
+    const promiseArray = newUsers.map((user) =>
+      api.post("/api/users").send(user).expect(400)
+    );
+    await Promise.all(promiseArray);
   });
 });
 

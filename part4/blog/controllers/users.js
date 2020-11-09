@@ -5,7 +5,7 @@ require("express-async-errors");
 
 usersRouter.get("/", async (requset, response) => {
   const users = await User.find({});
-  response.status(201).json(users);
+  response.status(200).json(users);
 });
 
 usersRouter.post("/", async (request, response, next) => {
@@ -28,7 +28,7 @@ usersRouter.post("/", async (request, response, next) => {
 
   const savedUser = await user.save();
 
-  response.json(savedUser);
+  response.status(201).json(savedUser);
 });
 
 module.exports = usersRouter;
