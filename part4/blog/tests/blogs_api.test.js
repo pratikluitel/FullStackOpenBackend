@@ -4,6 +4,9 @@ const app = require("../app");
 const helper = require("./tests_helper");
 const Blog = require("../models/blog");
 const User = require("../models/user");
+const tests_helper = require("./tests_helper");
+
+const bcrypt = require("bcrypt");
 
 beforeEach(async () => {
   await Blog.deleteMany({});
@@ -12,10 +15,14 @@ beforeEach(async () => {
   await Promise.all(promiseArray);
 
   await User.deleteMany({});
+
+  const saltRounds = 10;
+  const password = await bcrypt.hash("password", saltRounds);
+
   const user = new User({
     name: "admin",
     username: "admin",
-    password: "password",
+    password: password,
   });
   await user.save();
 });
@@ -43,6 +50,7 @@ describe("returning blogs", () => {
 
 describe("posting blog", () => {
   test("post request creates a new blog", async () => {
+    const token = await tests_helper.getToken();
     const newBlog = {
       title: "Fantano",
       author: "Really",
@@ -50,10 +58,10 @@ describe("posting blog", () => {
         "http://blog.cleancoder.com/uncle-bob/2017/05/05/TestDefinitions.htmll",
       likes: 10,
     };
-
     await api
       .post("/api/blogs")
       .send(newBlog)
+      .set("Authorization", `Bearer ${token}`)
       .expect(201)
       .expect("Content-Type", /application\/json/);
 
@@ -67,6 +75,7 @@ describe("posting blog", () => {
   });
 
   test("if likes property does not exist, default value to 0", async () => {
+    const token = await tests_helper.getToken();
     const newBlog = {
       title: "Arthur",
       author: "Beowulf",
@@ -76,6 +85,7 @@ describe("posting blog", () => {
     const response = await api
       .post("/api/blogs")
       .send(newBlog)
+      .set("Authorization", `Bearer ${token}`)
       .expect(201)
       .expect("Content-Type", /application\/json/);
 
@@ -83,26 +93,54 @@ describe("posting blog", () => {
   });
 
   test("if properties are missing from post request, bad request", async () => {
+    const token = await tests_helper.getToken();
     const newBlog = {
       author: "Garry",
       likes: 5,
     };
 
-    await api.post("/api/blogs").send(newBlog).expect(400);
+    await api
+      .post("/api/blogs")
+      .set("Authorization", `Bearer ${token}`)
+      .send(newBlog)
+      .expect(400);
+  });
+  test("fails with status code 401 if token not provided", async () => {
+    const newBlog = {
+      title: "Arthur",
+      author: "Beowulf",
+      url: "https://dummyurl.co.uk",
+    };
+
+    await api.post("/api/blogs").send(newBlog).expect(401);
   });
 });
 
 describe("deletion works", () => {
   test("deletion works on an existing note id with status 204", async () => {
-    const blogs = await helper.blogsinDb();
+    const token = await tests_helper.getToken();
+    const newBlog = {
+      title: "Arthur",
+      author: "Beowulf",
+      url: "https://dummyurl.co.uk",
+    };
 
-    await api.delete(`/api/blogs/${blogs[0].id}`).expect(204);
+    await api
+      .post("/api/blogs")
+      .send(newBlog)
+      .set("Authorization", `Bearer ${token}`);
+
+    const blogs = await helper.blogsinDb();
+    await api
+      .delete(`/api/blogs/${blogs[4].id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(204);
 
     const afterDel = await helper.blogsinDb();
     expect(afterDel).toHaveLength(blogs.length - 1);
 
     const ids = afterDel.map((blog) => blog.id);
-    expect(ids).not.toContain(blogs[0].id);
+    expect(ids).not.toContain(blogs[4].id);
   });
 });
 
